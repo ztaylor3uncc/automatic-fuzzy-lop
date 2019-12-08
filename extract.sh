@@ -3,6 +3,8 @@ ERROR='\033[0;31m'
 INFO='\033[0;34m'
 NC='\033[0m'
 
+cp $1 backup.bak
+
 (binwalk -e $1) || (echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1)
 
 find _*/ -name 'bin'
@@ -16,24 +18,21 @@ else
 	echo -e "${ERROR}Darn... binwalk didn't extract the image perfectly...${NC}" && exit 1
 fi;
 
-THEDIR="$(find _*/ -name 'bin' | head -1)"
-
+THEDIR="$(find _*/ -name 'bin' | sort | head -1)"
 THISDIR="$(echo $PWD)"
-
 THEARCH="$(file -b -e elf $THEDIR/* | grep -o ','.*',' | tr -d ' ' | tr -d ',' | uniq | tr '[:upper:]' '[:lower:]')"
-
 NEWDIR="$(echo 'firmware-library/'$THEARCH$(echo _*/))"
 
 mkdir $NEWDIR || (echo -e "${ERROR}The NEWDIR variable is wrong... Check the script${NC}" && exit 1)
 mkdir $NEWDIR/in/
 mkdir $NEWDIR/out/
 
-cp $(find afl/testcases/ -type f) $NEWDIR/in/ || (echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email ztaylor3@uncc.edu to resolve.${NC}" && exit 1)
-cp auto-fuzz.sh $NEWDIR/auto-fuzz.sh
+(cp $(find afl/testcases/ -type f) $NEWDIR/in/) || (echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email ztaylor3@uncc.edu to resolve.${NC}" && exit 1)
+ln -s $PWD/auto-fuzz.sh $NEWDIR/auto-fuzz
 
-mv $1 $NEWDIR/ || (echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1)
+(mv $1 $NEWDIR/) || (echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1)
 
-cp -r _*/* $NEWDIR/ || (echo -e "${ERROR}Issue copying everything into the newly created direcoty.${NC}" && exit 1)
+(cp -r _*/* $NEWDIR/) || (echo -e "${ERROR}Issue copying everything into the newly created directory.${NC}" && exit 1)
 
 rm -rf _*/
 
@@ -58,9 +57,9 @@ echo "${INFO}[*] Attempting to build QEMU (fingers crossed!)...${NC}"
 
 make || exit 1
 
-echo "[+] Build process successful!"
+echo "${INFO}[+] Build process successful!${NC}"
 
-echo "[*] Copying binary..."
+echo "${INFO}[*] Copying binary...${NC}"
 
 cp -f "${CPU_TARGET}-linux-user/qemu-${CPU_TARGET}" "../../afl-qemu-trace" || exit 1
 
@@ -71,7 +70,7 @@ echo "${INFO}[+] Successfully created '../afl-qemu-trace'.${NC}"
 
 if [ "$ORIG_CPU_TARGET" = "" ]; then
 
-  echo "[*] Testing the build..."
+  echo "${INFO}[*] Testing the build...${NC}"
 
   cd ..
 
@@ -110,7 +109,7 @@ fi
 
 cd ..
 
-sudo make install || (echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1)
+(sudo make install && echo -e "${INF}Running make install... likeliness to fail is higher here...${NC}") || (echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1)
 
 cd $THISDIR
 

@@ -1,0 +1,10 @@
+Dec 8, 2019:
+	- Fixed issue with non-x86 afl corpus minimizer not working
+		- failure was due to an incorrect virtual memory setting
+	
+	- Fixed the color coding on the error/info messages
+
+	- Instead of the silliness of copying the auto-fuzz.sh file, it is not a symbolic link
+		- This is to prevent errors if the information in the script is updated
+
+	- Forced backups of initial test case

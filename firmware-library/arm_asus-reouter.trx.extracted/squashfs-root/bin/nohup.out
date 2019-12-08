@@ -1,0 +1,6 @@
+Trying list of devices
+Unable to locate default devices, try the -d option.
+Can't open device asdf.
+Can't open device asdf.
+Can't open device asdf.
+Unable to reserve 0xf7000000 bytes of virtual address space for use as guest address space (check your virtual memory ulimit setting or reserve less using -R option)

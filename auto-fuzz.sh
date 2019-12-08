@@ -28,13 +28,20 @@ MSG=""
 
 ulimit -Sv $[$MEM << 10]
 nohup $1
-MSG=$(echo $?)
+sleep 1;
+MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
 
-while [[ $MSG -ne 0 ]]; do
-	MEM=$(( $MEM * 2 )) 
+while [[ "$MSG" == "Unable to reserve" ]]; do
+	if [ $MEM -gt 8191 ]; then
+		echo -e "${ERROR}Whoa there! The binary wants more than 8GB of virtual memory... Do some testing with QEMU's user-emulation mode to see if this binary can be run!${NC}" && exit 1;
+	fi;
+
+	MEM=$(( $MEM * 2 ))
+
 	ulimit -Sv $[$MEM << 10]
 	nohup $1
-	MSG=$(echo $?)
+	sleep 1
+	MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
 done;
 
 rm nohup.out

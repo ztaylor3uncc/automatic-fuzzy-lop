@@ -36,8 +36,8 @@ case $DESK in
 		echo -e "${INFO}It looks like you are running this script on $DESK${NC}"
 		echo -e "${INFO}This version of the script requires certain dependencies.${NC}"
 		echo -e "${INFO}Unfortunately, Slackware doesn't have a great way to easily install dependencies.${NC}"
-		echo -e "${INFO}Check the 01 script for a commented line about how to install${NC}"
-		echo -e "${INFO}Press 'q' to quit and edit the script or any other key to continue...${NC}"
+		echo -e "${INFO}Check the 01 script for a commented line about the easiest way to install them.${NC}"
+		echo -e "${INFO}Press 'q' to quit and check the script or any other key to continue...${NC}"
 		read x;
 		;;
 	"Debian GNU/Linux 10 (buster)")
@@ -62,7 +62,7 @@ if [ $x == 'q' ]; then
 fi
 
 # Dependency line for Debian GNU/Linux 10 (buster)
-{ sudo apt install -y git wget python coreutils binwalk qemu-user libtool wget python autoconf libtool-bin automake bison libglib2.0-dev && echo -e "${INFO}Installing dependencies...${NC}"; } || { echo -e "${ERROR}Uh oh... issue installing dependencies....${NC}" && exit 1; }
+#{ sudo apt install -y git wget python coreutils binwalk qemu-user libtool wget python autoconf libtool-bin automake bison libglib2.0-dev && echo -e "${INFO}Installing dependencies...${NC}"; } || { echo -e "${ERROR}Uh oh... issue installing dependencies....${NC}" && exit 1; }
 
 # Dependencies specifically for sasquatch
 #sudo apt-get install -y build-essential liblzma-dev liblzo2-dev zlib1g-dev

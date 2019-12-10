@@ -5,6 +5,25 @@ NC='\033[0m'
 
 clear
 
+echo -e "${INFO}Running the extract script for FOCS${NC}"
+echo -e "${INFO}This script attempts to extract the firmware from the firmware image${NC}"
+echo -e "${INFO}and identify its architecture. It also attempts to compile AFL to work${NC}"
+echo -e "${INFO}with the identified architecture.${NC}"
+echo -e "${INFO}${NC}"
+echo -e "${INFO}This can throw some issues, and this is certainly the part that has the${NC}"
+echo -e "${INFO}most trouble across Linix distros. If you are moving ahead with an unsupported${NC}"
+echo -e "${INFO}distribution, be very wary of error messages from the system, as my error messages${NC}"
+echo -e "${INFO}are typically only catching issues with this script itself and not things like the${NC}"
+echo -e "${INFO}make command.${NC}"
+echo -e "${INFO}${NC}"
+echo -e "${INFO}If you would like to quit to do some testing, enter 'q', otherwise, enter any other key to continue...${NC}"
+
+read x
+
+if [ $x == 'q' ];then
+	echo -e "${INFO}For the best...${NC}" && exit 1
+fi
+
 cp $1 backup.bak
 
 binwalk -e $1 || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; } 
@@ -112,7 +131,7 @@ fi
 
 cd ..
 
-{ sudo make install && echo -e "${INF}Running make install... likeliness to fail is higher here...${NC}"; } || { echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1; }
+{ sudo make install && echo -e "${INFO}Running make install... likeliness to fail is higher here...${NC}"; } || { echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1; }
 
 cd $THISDIR
 

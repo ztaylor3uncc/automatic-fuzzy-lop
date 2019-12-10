@@ -1,7 +1,9 @@
 #!/bin/bash
 ERROR='\033[0;31m'
-INFO='\033[0;34m'
+INFO='\033[1;34m'
 NC='\033[0m'
+
+clear
 
 cp $1 backup.bak
 

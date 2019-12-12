@@ -60,7 +60,19 @@ esac
 if [ $x == 'q' ]; then
 	echo -e "${ERROR}Probably a good decision...${NC}" && exit 1
 fi
-
+#      |  ]                                    |  ]                        
+#  .--.| | .---.  _ .--.   .---.  _ .--.   .--.| |  ,--.   _ .--.   .---.  _   __ 
+#/ /'`\' |/ /__\\[ '/'`\ \/ /__\\[ `.-. |/ /'`\' | `'_\ : [ `.-. | / /'`\][ \ [  ] 
+#| \__/  || \__., | \__/ || \__., | | | || \__/  | // | |, | | | | | \__.[ \ '/ /
+# '.__.;__]'.__.' | ;.__/  '.__.'[___||__]'.__.;__]\'-;__/[___||__]'.___.'\_:  / 
+#                [__|
+#  __       __                 __
+# [  |     [  |               [  |  _
+# | |.--.  | |  .--.   .---.  | | / ]
+# | '/'`\ \| |/ .'`\ \/ /'`\] | '' <
+# |  \__/ || || \__. || \__.  | |`\ \
+#[__;.__.'[___]'.__.' '.___.'[__|  \_]
+#
 # Dependency line for Debian GNU/Linux 10 (buster)
 { sudo apt install -y git wget python coreutils binwalk qemu-user libtool wget python autoconf libtool-bin automake bison libglib2.0-dev && echo -e "${INFO}Installing dependencies...${NC}"; } || { echo -e "${ERROR}Uh oh... issue installing dependencies....${NC}" && exit 1; }
 

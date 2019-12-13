@@ -8,3 +8,16 @@ Dec 8, 2019:
 		- This is to prevent errors if the information in the script is updated
 
 	- Forced backups of initial test case
+
+Dec 10, 2019:
+	- More fixes to the formatting of the scripts
+		- Now allowed users to quit before the move ahead with unsupported distros
+	
+	- Added bold to the INFO text, so it is a bit easier on the eyes
+
+	- Added more checks 
+	
+	- Adding a note to the TODO list:
+		- Add a file in a folder called 'docs' called 'how_to_do_manually_what_FOCS_does_for_you.txt'
+		- The purpose of this file is to describe what exactly is happening 'under the hood'
+		- This will help users on unsupported distros figure out how to make AFL work on their distro

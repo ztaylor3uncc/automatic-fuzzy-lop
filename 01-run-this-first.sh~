@@ -4,10 +4,9 @@ ERROR='\033[0;31m'
 INFO='\033[1;34m'
 NC='\033[0m'
 
-# this is here for a future update
-#if [ $# != 1 ]; then
-#	echo -e "${ERROR}usage: focs <path/to/binary/for/extraction>${NC}" && exit 1
-#fi
+if [ $# != 1 ]; then
+	echo -e "${ERROR}usage: focs <path/to/binary/for/extraction>${NC}" && exit 1
+fi
 
 clear
 

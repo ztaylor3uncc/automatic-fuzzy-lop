@@ -21,3 +21,10 @@ Dec 10, 2019:
 		- Add a file in a folder called 'docs' called 'how_to_do_manually_what_FOCS_does_for_you.txt'
 		- The purpose of this file is to describe what exactly is happening 'under the hood'
 		- This will help users on unsupported distros figure out how to make AFL work on their distro
+
+Dec 13, 2019:
+	- The master branch now includs all of the necessary tweaks for Slackware 14.2
+	- The issue of Debian Buster will have to be addressed by a patch to the already patched QEMU files which will be either reversed or implemented based on if Debian buster is being used
+
+Dec 29, 2019:
+	- Trying to make the script more usable and less fractured

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cp backup.bak.bak backup.bak
+
+sudo rm -rf /usr/share/focs/*
+cp -r afl /usr/share/focs/

@@ -49,14 +49,15 @@ if [ ! $VAL03 -eq 0 ]; then
       read x;
       ;;
     # This check should work for Kali
-    "Debian GNU/Linux 10 (buster)"|"Kali GNU/Linux Rolling")
+
+    Debian*|Kali*)
       clear
       echo -e "${INFO}It looks like you are running this script on $DESK${NC}"
       echo -e "${INFO}If you don't want to install the dependencies for some reason, press 'q', otherwise,${NC}"
       echo -e "${INFO}press any other key to continue with the installation.${NC}"
       read x;
 
-      if [ $x == 'q' ]; then
+      if [[ $x == 'q' ]]; then
         clear
         echo -e "${INFO}Well, it was worth a shot...${NC}" && exit 1
       else 
@@ -70,7 +71,7 @@ if [ ! $VAL03 -eq 0 ]; then
       echo -e "${INFO}press any other key to continue with the installation.${NC}"
       read x;
 
-      if [ $x == 'q' ]; then
+      if [[ $x == 'q' ]]; then
         clear
         echo -e "${INFO}Well, it was worth a shot...${NC}" && exit 1
       else 
@@ -155,10 +156,8 @@ if [ ! $VAL03 -eq 0 ]; then
   if [ "$CKSUM" = "$QEMU_SHA384" ]; then
     echo -e "${INFO}[+] Cryptographic signature on $ARCHIVE checks out.${NC}"
   else
-
     echo -e "${ERROR}[-] Error: signature mismatch on $ARCHIVE (perhaps download error?).${NC}"
     exit 1
-
   fi
 
   echo -e "${INFO}[*] Uncompressing archive (this will take a while)...${NC}"
@@ -185,8 +184,14 @@ echo -e "${INFO}    ################################################${NC}"
 }
 
 run_all_the_things () {
-echo "What is the file path"
-read file_path
+if [[ -n $1 ]]; then
+  clear
+  echo "What is the file path" 
+  read file_path
+else
+  file_path=$1
+fi
+
 workDIR=$(pwd)
 
 # TODO
@@ -288,9 +293,9 @@ workDIR=$(pwd)
     sudo mkdir $NEWDIR/in/
     sudo mkdir $NEWDIR/out/
     if [[ -d /home/$user/Documents/focs/afl/testcase ]]; then
-      sudo cp $(find /home/$user/Documents/focs/afl/testcases/ -type f) $NEWDIR/in/;
+      sudo cp -r $(find /home/$user/Documents/focs/afl/testcases/ -type f) $NEWDIR/in/;
     else
-      sudo cp $workDIR/afl/testcases/ $NEWDIR/in/;
+      sudo cp -r $workDIR/afl/testcases/ $NEWDIR/in/;
     fi
 
     # this ($PWD) has been changed to an absolute path for testing purposes
@@ -415,7 +420,7 @@ if [[ -z $1 ]]; then
         focs_install 
         ;;
       "run")
-        run_all_the_things $1
+        run_all_the_things
         ;;
       "clean")
         clean_firmware

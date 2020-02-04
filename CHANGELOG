@@ -28,3 +28,11 @@ Dec 13, 2019:
 
 Dec 29, 2019:
 	- Trying to make the script more usable and less fractured
+
+Febuary 4, 2019
+	- Added menu system
+	- Minor bug fixes when creating single script file
+	- Fixed path system
+
+	TODO: Update program to be able to run anywhere on system
+	- Used AFL github repo as a submodule

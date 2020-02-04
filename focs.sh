@@ -1,12 +1,26 @@
 #!/bin/bash
 
+clean_firmware() {
+  DIR="/usr/share/focs/"
+  echo -e "Removing everything in $DIR, continue? (Y/n)"
+  read choice
+  case $choice in
+    n|N) exit
+    ;;
+    *) echo "Cleaning EVERYTHING..." && sudo rm -fr $DIR* 2>&- 
+       # Adding firmware directory back
+       sudo mkdir /usr/share/focs/firmware-library/
+    ;;
+  esac
+}
+
 focs_install() {
 # TODO
 # Check for options and print the valid options
 
-  #go ahead and get sudo
+#go ahead and get sudo
 #sudo cat /etc/*elease | grep -i pretty_name= | cut -d '=' -f 2 | sed "s/\"//g"
-DESK=$(sudo cat /etc/*elease | grep -i pretty_name= | cut -d '=' -f 2 | sed "s/\"//g")
+DESK=$(sudo cat /etc/*elease | grep -i pretty | cut -d '=' -f 2 | sed "s/\"//g")
 
 which afl-fuzz
 
@@ -16,8 +30,7 @@ VAL03=$(( $VAL01 + $VAL02 ))
 
 if [ ! $VAL03 -eq 0 ]; then
   
-  sudo mkdir /usr/share/focs/
-  sudo mkdir /usr/share/focs/firmware-library/
+  sudo mkdir -p /usr/share/focs/firmware-library/
 
   case $DESK in
     "Slackware 14.2")
@@ -35,7 +48,8 @@ if [ ! $VAL03 -eq 0 ]; then
       echo -e "${INFO}Press 'q' to quit and check the script or any other key to continue...${NC}"
       read x;
       ;;
-    "Debian GNU/Linux 10 (buster)")
+    # This check should work for Kali
+    "Debian GNU/Linux 10 (buster)"|"Kali GNU/Linux Rolling")
       clear
       echo -e "${INFO}It looks like you are running this script on $DESK${NC}"
       echo -e "${INFO}If you don't want to install the dependencies for some reason, press 'q', otherwise,${NC}"
@@ -72,7 +86,7 @@ if [ ! $VAL03 -eq 0 ]; then
       echo -e "${INFO}command. To quit now, hit 'q', otheriwse, enter any other key to continue.${NC}"  
       read x
 
-    if [ $x == 'q' ]; then
+    if [[ $x == 'q' ]]; then
       clear
       echo -e "${INFO}Probably a good decision...${NC}" && exit 1
     fi
@@ -111,7 +125,7 @@ if [ ! $VAL03 -eq 0 ]; then
   VERSION="2.10.0"
   QEMU_URL="http://download.qemu-project.org/qemu-${VERSION}.tar.xz"
   QEMU_SHA384="68216c935487bc8c0596ac309e1e3ee75c2c4ce898aab796faa321db5740609ced365fedda025678d072d09ac8928105"
-  cd qemu_mode
+
   # Dealing with QEMU now
   if [ ! "`uname -s`" = "Linux" ]; then
     echo -e "${ERROR}QEMU instrumentation is supported only on Linux.${NC}" && exit 1
@@ -139,9 +153,7 @@ if [ ! $VAL03 -eq 0 ]; then
   fi
 
   if [ "$CKSUM" = "$QEMU_SHA384" ]; then
-
     echo -e "${INFO}[+] Cryptographic signature on $ARCHIVE checks out.${NC}"
-
   else
 
     echo -e "${ERROR}[-] Error: signature mismatch on $ARCHIVE (perhaps download error?).${NC}"
@@ -173,6 +185,10 @@ echo -e "${INFO}    ################################################${NC}"
 }
 
 run_all_the_things () {
+echo "What is the file path"
+read file_path
+workDIR=$(pwd)
+
 # TODO
 # Check for options and print the valid options
     ERROR='\033[0;31m'
@@ -186,7 +202,7 @@ run_all_the_things () {
 
     clear
     echo -e "${INFO}Welcome to the dependency script for FOCS!${NC}"
-    echo -e "${INFO}Some quick notes beore you get started...${NC}"
+    echo -e "${INFO}Some quick notes beore you get started...${NC}\n"
     echo -e "${INFO}Text in blue is helpful information you should probably read!${NC}"
     echo -e "${ERROR}Text in red indicates that something did not go as planned...${NC}"
     echo -e "${NC}White text is typically just output from a currently running command.${NC}"
@@ -201,7 +217,7 @@ run_all_the_things () {
 
     read x
 
-    if [ $x == 'q' ]; then
+    if [[ $x == 'q' ]]; then
     	clear
     	echo -e "${INFO}Probably a good decision...${NC}" && exit 1
     	echo -e "${INFO}${NC}"
@@ -224,15 +240,15 @@ run_all_the_things () {
 
     read x
 
-    if [ $x == 'q' ];then
+    if [[ $x == 'q' ]];then
     	echo -e "${INFO}For the best...${NC}" && exit 1
     fi
 
-    sudo cp $1 /usr/share/focs/
+    sudo cp $file_path /usr/share/focs/
 
     cd /usr/share/focs/ || { echo -e "${ERROR}Issue jumping into the /usr/share/focs directory. Check that it exists.${NC}" && exit 1; };
 
-    sudo binwalk -e $1 || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; }; 
+    sudo binwalk -e $file_path || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; }; 
 
     sudo find _*/ -name 'bin'
 
@@ -248,12 +264,17 @@ run_all_the_things () {
     THEDIR="$(find _*/ -name 'bin' | sort | head -1)"
     THISDIR="$(echo $PWD)"
     THEARCH="$(file -b -e elf $THEDIR/* | grep -o ','.*',' | tr -d ' ' | tr -d ',' | uniq | tr '[:upper:]' '[:lower:]')"
-    NEWDIR="$(echo 'firmware-library/'$THEARCH$(echo _*))"
+    
+    if [[ -d firmware-library ]]; then
+      NEWDIR="$(echo 'firmware-library/'$THEARCH$(echo _*))"
+    else
+      echo -e "Firmware Library directory 'firmware-library/' not found in $(pwd)"
+    fi
 
     if [ -d /usr/share/focs/$NEWDIR ]; then
     	pwd
-    	echo $1
-    	ing awk to display workds only after underscoreusing awk to display workds only after underscoreusing awk to display workds only after underscoreead x
+    	echo $file_path
+    	# ing awk to display workds only after underscoreusing awk to display workds only after underscoreusing awk to display workds only after underscoreead x
     	# at this part remmember to add the bit
     	# where you delete the original direcotory
     	# (starting with /usr/share/focs/_*)
@@ -266,14 +287,21 @@ run_all_the_things () {
     sudo mkdir $NEWDIR || { echo -e "${ERROR}The NEWDIR variable is wrong or the directory for the firmware already exists... Check the script or /usr/share/focs/firmware-library for more info.${NC}" && echo -e "${ERROR}If the direcotry exists and this is not an error, simply utilize the feature that lets you skip to fuzzing or check in the directory with the firmware image.${NC}"&& exit 1; }
     sudo mkdir $NEWDIR/in/
     sudo mkdir $NEWDIR/out/
-
-    { sudo cp $(find /home/sl3dg3/Documents/focs/afl/testcases/ -type f) $NEWDIR/in/; } || { echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email vstech@protonmail.ch to resolve.${NC}" && exit 1; }
+    if [[ -d /home/$user/Documents/focs/afl/testcase ]]; then
+      sudo cp $(find /home/$user/Documents/focs/afl/testcases/ -type f) $NEWDIR/in/;
+    else
+      sudo cp $workDIR/afl/testcases/ $NEWDIR/in/;
+    fi
 
     # this ($PWD) has been changed to an absolute path for testing purposes
     # it will be changed to a more appropriate path (like $PWD) after testing completes
-    sudo ln -s /home/sl3dg3/Documents/focs/auto-fuzz.sh $NEWDIR/auto-fuzz
+    if [[ -f /home/$user/Documents/focs/auto-fuzz.sh ]]; then
+      sudo ln -s /home/$user/Documents/focs/auto-fuzz.sh $NEWDIR/auto-fuzz
+    else
+      sudo ln -s $workDIR/auto-fuzz.sh $NEWDIR/auto-fuzz
+    fi
 
-    { sudo mv $1 $NEWDIR/ && echo -e "${INFO}The original firmware image has been copied to the firmware directory in focs!${NC}"; } || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
+    { sudo mv $file_path $NEWDIR/ && echo -e "${INFO}The original firmware image has been copied to the firmware directory in focs!${NC}"; } || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
 
     sudo cp -r _*/* $NEWDIR/ || { echo -e "${ERROR}Issue copying everything into the newly created directory.${NC}" && exit 1; }
 
@@ -283,7 +311,7 @@ run_all_the_things () {
 
     # changing this to an absolute path for the same reason as above
     # we will fix this in final testing
-    cd /home/sl3dg3/Documents/focs/afl/qemu_mode/
+    cd $workDIR/afl/qemu_mode/
 
     ORIG_CPU_TARGET="$CPU_TARGET"
 
@@ -297,13 +325,11 @@ run_all_the_things () {
       --target-list="${CPU_TARGET}-linux-user" --enable-pie --enable-kvm || exit 1
 
     echo "${INFO}Configuration complete.${NC}"
-
     echo "${INFO}Attempting to build QEMU (fingers crossed!)...${NC}"
 
     make || exit 1
 
     echo "${INFO}Build process successful!${NC}"
-
     echo "${INFO}Copying binary...${NC}"
 
     cp -f "${CPU_TARGET}-linux-user/qemu-${CPU_TARGET}" "../../afl-qemu-trace" || exit 1
@@ -377,11 +403,11 @@ echo -e "
       :;                                   
 "
 
-if [ $1 -z ]; then
+if [[ -z $1 ]]; then
   # Interactive menu
   echo -e "\n\n F O C S   M E N U \n"
-  PS3='Select 1,2 or 3: '
-  options=("install" "run" "exit")
+  PS3='Select 1,2,3 or 4: '
+  options=("install" "run" "clean" "exit")
   select opt in "${options[@]}"
   do
     case $opt in
@@ -390,6 +416,9 @@ if [ $1 -z ]; then
         ;;
       "run")
         run_all_the_things $1
+        ;;
+      "clean")
+        clean_firmware
         ;;
       "exit")
         break
@@ -405,8 +434,11 @@ else
     install)
       focs_install 
       ;;
-    run $1)
-      run_all_the_things 
+    run)
+      run_all_the_things $2
+      ;;
+    clean)
+      clean_firmware
       ;;
     exit)
       break

@@ -356,21 +356,62 @@ run_all_the_things () {
     exit 0;
 }
 
-echo 'Welcome to focs: '
-options=("install" "run" "quit")
-select opt in "${options[@]}"
-do
+### display main menu ###
+## TODO Add dialog for --help and man documents
+echo -e "
+     ,                                     
+     Et           :                        
+     E#t         t#,          .,          .
+     E##t       ;##W.        ,Wt         ;W
+     E#W#t     :#L:WE       i#D.        f#E
+     E#tfL.   .KG  ,#D     f#f        .E#f 
+     E#t      EE    ;#f  .D#i        iWW;  
+  ,ffW#Dffj. f#.     t#i:KW,        L##Lffi
+   ;LW#ELLLf.:#G     GK t#f        tLLG##L 
+     E#t      ;#L   LW.  ;#G         ,W#i  
+     E#t       t#f f#:    :KE.      j#E.   
+     E#t        f#D#;      .DW:   .D#j     
+     E#t         G#t         L#, ,WK,      
+     E#t          t           jt EG.       
+     ;#t                         ,         
+      :;                                   
+"
+
+if [ $1 -z ]; then
+  # Interactive menu
+  echo -e "\n\n F O C S   M E N U \n"
+  PS3='Select 1,2 or 3: '
+  options=("install" "run" "exit")
+  select opt in "${options[@]}"
+  do
+    case $opt in
+      "install")
+        focs_install 
+        ;;
+      "run")
+        run_all_the_things $1
+        ;;
+      "exit")
+        break
+        ;; 
+      *)
+        echo "Please select options with: 1, 2, 3"
+    esac
+  done
+else
+  # Scripting menu
+  opt=$1
   case $opt in
-    1)
+    install)
       focs_install 
       ;;
-    2)
+    run $1)
       run_all_the_things 
       ;;
-    3)
+    exit)
       break
       ;; 
     *)
       echo "Please select options with: 1, 2, 3"
   esac
-done
+fi 

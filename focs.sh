@@ -356,17 +356,21 @@ run_all_the_things () {
     exit 0;
 }
 
-PSE='Welcome to focs: '
-echo $PSE
-options=("install" "run")
+echo 'Welcome to focs: '
+options=("install" "run" "quit")
 select opt in "${options[@]}"
 do
   case $opt in
-    "install")
-      focs_install ;;
-    "run")
-      run_all_the_things ;;
+    1)
+      focs_install 
+      ;;
+    2)
+      run_all_the_things 
+      ;;
+    3)
+      break
+      ;; 
     *)
-      echo "Please select either \'install\' or \'run\'"
+      echo "Please select options with: 1, 2, 3"
   esac
 done

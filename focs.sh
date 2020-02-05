@@ -352,13 +352,42 @@ auto-fuzz () {
 	if [[ ! -d "in.bak" ]] ; then
 		mv in/ in.bak/
 		echo -e "${INFO}A backup of your original test cases are stored in the in.bak directory"
+	else
+		rm -fr in
+		mv in2 in
 	fi
 
-	rm -fr in
-	mv in2 in
+	# TODO: No save and not continue
+	if [[ -z $(ls out/*) ]] ; then
+	   echo -e "${INFO} Would you like to continue your previous job? (Y/n)"
+	   read OPT
 
-	afl-fuzz -Q -m $MEM -i in/ -o out/ $1 $2
+	   if [[ ${OPT,,} == 'n' ]]; then
+	        rm -fr out/*
+	        rm -fr in
+ 	   else
+            mv out/{crashes/*,hanges/*} in/
+	        mv in2 in
+	   fi
+	fi
+	clear
 
+	# CPU=$(nproc)
+	# echo "You have $CPU available, how many would you like to use? (default 1)"
+	# read CPU
+	# if [[ $CPU -gt 1 ]] && [[ -z $CPU ]]; then
+	# 	echo "${INFO} Naming master fuzzer FOCS0${IN}"
+	# 	nohup afl-fuzz -Q -m $MEM -i in/ -o out/ -M FOCS0 $1 $2
+	# 	# TODO: Figure out how to kill slaves
+	# 	for core in {1..$CPU}; do
+	# 		nohup afl-fuzz -Q -m $MEM -i in/ -o out/ -S "FOCS$core" $1 $2 &>/dev/null &
+	# 	done
+    # else
+	#  	echo "${INFO} Naming master fuzzer FOCS0${IN}"
+	# 	afl-fuzz -Q -m $MEM -i in/ -o out/ -M FOCS0 $1 $2
+	# fi
+	echo "${INFO} Naming master fuzzer FOCS0${IN}"
+	afl-fuzz -Q -m $MEM -i in/ -o out/ -M FOCS0 $1 $2
 }
 
 extract () {

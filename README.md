@@ -1,3 +1,4 @@
+```
      ,                                     
      Et           :                        
      E#t         t#,          .,          .
@@ -18,6 +19,7 @@
                                            
                                            
                                            
+```
 After what feels like 10,000 years of trying to find an easy way to fuzz non-x8 binaries,
 	I decided to make one myself!   
 

@@ -253,7 +253,7 @@ foc_firmware-prep() {
 
 		# All just to look nice :)
 		tfile=$(tempfile)
-		file $(find /usr/share/focs/firmware-library/*$file*/ -type f -executable) | grep -i 'executable' | awk -F: '{print $1}' | sed 's:.*/::' | sort > $tfile
+		file $(find /usr/share/focs/firmware-library/*$file* -type f -executable) | grep -i 'stripped' | grep -v 'shared\|pie' | awk -F: '{print $1}' | sed 's:.*/::' | sort > $tfile
 		column -x $tfile
 		rm $tfile
 		echo -e "\n${INFO}Type binary to fuzz${NC}"
@@ -317,8 +317,8 @@ auto-fuzz () {
 	MSG=""
 
 	# Set arm libraries in libary path]
-	BIN_PATH="/usr/share/focs/firmware-library"
-	export LD_LIBRARY_PATH="$LD_LIBARY_PATH:$BIN_PATH/$5/squashfs-root/lib"
+	# BIN_PATH="/usr/share/focs/firmware-library"
+	# export LD_LIBRARY_PATH="$LD_LIBARY_PATH:$BIN_PATH/$5/squashfs-root/lib"
 
 	ulimit -Sv $[$MEM << 10]
 	nohup $COM $1
@@ -423,7 +423,7 @@ extract () {
 	scrpt="auto-fuzz.sh"
 	dr="auto-fuzz"
 
-	sudo ln -s $PWD$scrpt $NEWDIR$dr
+	sudo ln -s $(pwd)$scrpt $NEWDIR$dr
 
 	sudo mv $file $NEWDIR || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
 

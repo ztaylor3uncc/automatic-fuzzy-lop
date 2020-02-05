@@ -259,6 +259,16 @@ foc_firmware-prep() {
 		echo -e "\n${INFO}Type binary to fuzz${NC}"
 		read target
 
+		# TODO: Change dialog
+		# TODO: Add suggestions for fuzzing
+		# qemu-$THEARCH $DIR --help || qemu-$THEARCH $DIR -h
+		# TODO This needs to be stream lined
+		echo -e "${INFO}Specifc the args you would like to use for the binary"
+		read -a args
+		if [[ -z $args ]]; then
+			args="seed"
+		fi
+
 		echo -e "${INFO}Select an architecture: ${NC}"
 		PS3="Select an option: "
 		OPTS=$(ls /usr/share/focs/firmware-library | grep "$file" | cut -f1 -d "_" | uniq )
@@ -268,22 +278,14 @@ foc_firmware-prep() {
 		done
 		read -r THEARCH <<<"$THEARCH"
 		DIR=$(find /usr/share/focs/ -iname $THEARCH_$target)
-		# TODO: Change dialog
-
-		# qemu-$THEARCH $DIR --help || qemu-$THEARCH $DIR -h
-		# TODO This needs to be stream lined
-		# echo -e "${INFO}Specifc the args you would like to use"
-		# read args
-		# if [[ -z $args ]]; then
-		args="seed"
-		# fi
 	fi
+
+	echo "$args"
 
 	# Appending architecture to scripted version
 	if [[ ! -z $1 ]]; then
 		file="${THEARCH}_${1}.extracted"
 		# file="$${1}.extracted"
-
 	fi
 
 	# Binary to fuzz, qemu arguements, architecture, path of original firmware
@@ -308,8 +310,6 @@ auto-fuzz () {
 
 	FOCS="/usr/share/focs/firmware-library"
 	cd "$FOCS/$4/" || { echo -e "${ERROR}You might've entered a wrong directory...${NC}" && exit 1; }
-
-	echo "$(pwd)"
 
 	export COM=qemu-$3 # "$(file -b -e elf * | grep -o ','.*',' | tr -d ',' | tr -d ' ' | uniq | tr '[:upper:]' '[:lower:]')"
 
@@ -345,16 +345,17 @@ auto-fuzz () {
 	echo -e "${INFO}Errors are likely to occur here, so if problems persist,${NC}"
 	echo -e "${INFO}Comment out the command 'afl-cmin' in the auto-fuzz.sh file${NC}" && sleep 3
 
-	# Removed $2 for testing
-	{ afl-cmin -Q -m $MEM -i in/ -o in2/ $1 && echo -e "${INFO}Corpus seemed to minimize successfully!${NC}"; } || { echo -e "${ERROR}An error occurred with 'afl-cmin'. Scroll up for more details!${NC}" && exit 1; }
+	{ afl-cmin -Q -m $MEM -i in/ -o in2/ $1 $2 && echo -e "${INFO}Corpus seemed to minimize successfully!${NC}"; } || { echo -e "${ERROR}An error occurred with 'afl-cmin'. Scroll up for more details!${NC}" && exit 1; }
 
-	if [ -d "in.bak" ]; then
-		mv in2/ in/
-	else
+
+	# TODO: Finishing moving orginial test cases for genertated cases
+	if [[ ! -d "in.bak" ]] ; then
 		mv in/ in.bak/
-		mv in2/ in/
 		echo -e "${INFO}A backup of your original test cases are stored in the in.bak directory"
 	fi
+
+	rm -fr in
+	mv in2 in
 
 	afl-fuzz -Q -m $MEM -i in/ -o out/ $1 $2
 

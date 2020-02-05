@@ -42,6 +42,8 @@ git --recurse-submodules [REPO]
 - [ ] Script mode (run focs.sh) without menu
 - [ ] Global install
 - [ ] Adding new test cases (Stopping fuzzing in progress to update testcases)
+- [ ] Arguement suggestions
+- [ ] Fix in2/ on re-runs
 
 ### Contributing
 This project needs allot of work, but is used for hobbyist reasons. If you see something that may need a change, please fork and add a change. We are open to issues and merge requests.

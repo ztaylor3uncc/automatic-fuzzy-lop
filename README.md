@@ -20,10 +20,11 @@
                                            
                                            
 ```
-After what feels like 10,000 years of trying to find an easy way to fuzz non-x8 binaries,
-	I decided to make one myself!   
 
-	- vr0n
+After what feels like 10,000 years of trying to find an easy way to fuzz non-x8 binaries,
+I decided to make one myself!   
+
+  vr0n
                                            
 ## Focs
 This project is super experimental. Use at your own prerogative.
@@ -43,3 +44,6 @@ git --recurse-submodules [REPO]
 
 ### Contributing
 This project needs allot of work, but is used for hobbyist reasons. If you see something that may need a change, please fork and add a change. We are open to issues and merge requests.
+
+### Notes
+- Multiple architectures for libraries may be needed [debian](https://wiki.debian.org/Multiarch/HOWTO)

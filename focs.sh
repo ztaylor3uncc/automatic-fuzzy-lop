@@ -13,6 +13,8 @@ clean_firmware() {
 
        	sudo mkdir /usr/share/focs/firmware-library/
   		sudo cp -r $(sudo find / -path "*afl" 2>&- ) /usr/share/focs/
+  		user=$USER
+		sudo chown $user:$user -R /usr/share/focs
     ;;
   esac
 }
@@ -79,7 +81,8 @@ focs_install() {
 		fi
 
 		sudo mkdir /usr/share/focs/firmware-library/
-		
+  		sudo cp -r $(sudo find / -path "*afl" 2>&- ) /usr/share/focs/
+
 		clear
 
 		case $DESK in
@@ -225,17 +228,24 @@ focs_install() {
 }
 
 foc_firmware-prep() {
-	QEMU_DIR="/usr/share/afl/qemu_mode"
+	# Variables are in the scope of function
+	DIR=1
+	args=1
+	target=1
+
 	# Scripting mode if args passed
 	if [[ -z $1 ]]; then
-		echo -e "${INFO}Type the name of the firmware image you would like to fuzz:${NC}"
+		echo -e "${INFO}Select the firmware image you would like to fuzz:${NC}"
 
-		for f in $(ls /usr/share/focs/firmware-library); do
-			f="${f%.*}"
-			echo $f | cut -d _ -f 2  
+		# Options from directory
+		f=$(ls /usr/share/focs/firmware-library)
+		PS3="Select an option"
+		select file in "${f[@]}"; do
+			[[ -n $file ]] || { echo -e "${WARN} Invalid choice. Try again..." >&2; continue; }
+			break
 		done
-
-		read file
+		# read -r file <<<$( echo "$f" | cut -d "_" -f 2)
+		read -r file <<<"$f"
 	fi
 
 	if [[ -z $2 ]]; then
@@ -257,22 +267,37 @@ foc_firmware-prep() {
 			break 
 		done
 		read -r THEARCH <<<"$THEARCH"
-		echo $THEARCH
-		DIR=$(find "/usr/share/focs/firmware-library/$THEARCH_$file.extracted/" -name $target)
-		$QEMU_DIR/qemu-$THEARCH $DIR --help || qemu-$THEARCH $DIR -h
+		DIR=$(find /usr/share/focs/ -iname $THEARCH_$target)
+		# TODO: Change dialog
+
+		# qemu-$THEARCH $DIR --help || qemu-$THEARCH $DIR -h
 		# TODO This needs to be stream lined
-		echo -e "${INFO}Specifc the args you would like to use"
-		read args
+		# echo -e "${INFO}Specifc the args you would like to use"
+		# read args
+		# if [[ -z $args ]]; then
+		args="seed"
+		# fi
 	fi
 
-	auto-fuzz $DIR $args
+	# Appending architecture to scripted version
+	if [[ ! -z $1 ]]; then
+		file="${THEARCH}_${1}.extracted"
+		# file="$${1}.extracted"
+
+	fi
+
+	# Binary to fuzz, qemu arguements, architecture, path of original firmware
+	auto-fuzz $DIR $args $THEARCH $file
 }
 
 
+# TODO: Final frontiner
 auto-fuzz () {
+	user=$USER
+	sudo chown $user -R /usr/share/focs
 	clear
 
-	if [[ $# -ne 1 ]] && [[ $# -ne 2 ]]; then
+	if [[ -z $1 ]] && [[ -z $2 ]]; then
 		echo -e "${ERROR}usage ./auto-fuzz /path/to/binary <memory to allocate>${NC}"
 		echo -e "${ERROR}There is an optional third argument -- @@ .\nThis can be used to indicate that a file from stdin shoudl be used as input.${NC}"
 		echo -e "${ERROR}The path to binary is likely something like squashfs-root/bin/<binary>${NC}"
@@ -281,27 +306,24 @@ auto-fuzz () {
 
 	echo 'core' | sudo tee /proc/sys/kernel/core_pattern
 
-	THISDIR="$(echo $PWD)"
-
-	TARGETDIR="$(find ./ -name 'bin' | sort | head -1)/"
+	FOCS="/usr/share/focs/firmware-library"
+	cd "$FOCS/$4/" || { echo -e "${ERROR}You might've entered a wrong directory...${NC}" && exit 1; }
 
 	echo "$(pwd)"
-	cd $TARGETDIR || { echo -e "${ERROR}You might've entered a wrong directory...${NC}" && exit 1; }
 
-	export COM=qemu-"$(file -b -e elf * | grep -o ','.*',' | tr -d ',' | tr -d ' ' | uniq | tr '[:upper:]' '[:lower:]')"
-
-	cd ..
-
-	export QEMU_LD_PREFIX="$(echo $PWD)"
-
-	cd $THISDIR
+	export COM=qemu-$3 # "$(file -b -e elf * | grep -o ','.*',' | tr -d ',' | tr -d ' ' | uniq | tr '[:upper:]' '[:lower:]')"
 
 	MEM=1024
 	MSG=""
 
+	# Set arm libraries in libary path]
+	BIN_PATH="/usr/share/focs/firmware-library"
+	export LD_LIBRARY_PATH="$LD_LIBARY_PATH:$BIN_PATH/$5/squashfs-root/lib"
+
 	ulimit -Sv $[$MEM << 10]
 	nohup $COM $1
 	sleep 1;
+
 	MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
 
 	while [[ "$MSG" == "Unable to reserve" ]]; do
@@ -311,7 +333,7 @@ auto-fuzz () {
 
 		MEM=$(( $MEM * 2 ))
 
-		ulimit -Sv $[$MEM << 10]
+		ulimit -Sv $["$MEM" << 10]
 		nohup $COM $1
 		sleep 1
 		MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
@@ -323,7 +345,8 @@ auto-fuzz () {
 	echo -e "${INFO}Errors are likely to occur here, so if problems persist,${NC}"
 	echo -e "${INFO}Comment out the command 'afl-cmin' in the auto-fuzz.sh file${NC}" && sleep 3
 
-	{ afl-cmin -Q -m $MEM -i in/ -o in2/ $1 $2 && echo -e "${INFO}Corpus seemed to minimize successfully!${NC}"; } || { echo -e "${ERROR}An error occurred with 'afl-cmin'. Scroll up for more details!${NC}" && exit 1; }
+	# Removed $2 for testing
+	{ afl-cmin -Q -m $MEM -i in/ -o in2/ $1 && echo -e "${INFO}Corpus seemed to minimize successfully!${NC}"; } || { echo -e "${ERROR}An error occurred with 'afl-cmin'. Scroll up for more details!${NC}" && exit 1; }
 
 	if [ -d "in.bak" ]; then
 		mv in2/ in/
@@ -636,6 +659,10 @@ run_all_the_things () {
 	echo -e "${INFO}#################################################${NC}"
 }
 
+dialog() {
+	echo "You could get help if this was finished... "
+}
+
 ### display main menu ###
 ## TODO Add dialog for --help and man documents
 echo -e "
@@ -661,8 +688,8 @@ if [[ -z $1 ]]; then
   # Interactive menu
   # TODO: add options to specify new run or old run (firmware loaded or not)
   echo -e "\n\n F O C S   M E N U \n"
-  PS3='Select 1 (install), 2 (extract), 3 (run), 4 (clean), 5 (exit): '
-  options=("install" "extract" "run" "clean" "exit")
+  PS3='Select 1 (install), 2 (extract), 3 (run), 4 (clean), 5 (help), 6 (exit): '
+  options=("install" "extract" "run" "clean" "help" "exit")
   select opt in "${options[@]}"
   do
     case $opt in
@@ -679,6 +706,9 @@ if [[ -z $1 ]]; then
       "clean")
         clean_firmware
         ;;
+      "help")
+		dialog
+		;;
       "exit")
         break
         ;; 
@@ -703,10 +733,14 @@ else
     clean)
       clean_firmware
       ;;
+    "help")
+	  dialog
+	  ;;
     exit)
       break
       ;; 
     *)
+        dialog
         echo "Try again..."
   esac
 fi 

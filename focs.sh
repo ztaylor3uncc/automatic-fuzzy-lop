@@ -439,7 +439,7 @@ extract () {
 
 	test "$CPU_TARGET" = "" && CPU_TARGET="`uname -m`"
 	test "$CPU_TARGET" = "i686" && CPU_TARGET="i386"
-
+	
 	cd qemu-*/ || { echo -e "${ERROR}The qemu directory isn't where it's supposed to be. Or your PWD is screwy.${NC}" && exit 1; }
 
 	CFLAGS="-O3 -ggdb" 

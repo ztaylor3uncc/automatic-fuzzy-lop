@@ -21,7 +21,7 @@
                                            
 ```
 
-After what feels like 10,000 years of trying to find an easy way to fuzz non-x8 binaries,
+After what feels like 10,000 years of trying to find an easy way to fuzz non-x86 binaries,
 I decided to make one myself!   
 
   vr0n
@@ -34,16 +34,14 @@ This project is super experimental. Use at your own prerogative.
 ``` 
 git --recurse-submodules [REPO]
 ```
-
-- run ./focs.sh
+- run ./focs.sh dialog
 
 ### Features in Progress
-- Menu mode (utilize cli to run focs)
-- Script mode (run focs.sh) without menu
-- Global install
+- [x] Menu mode (utilize cli to run focs)
+- [ ] Finish dialog function in script (This should be similar to generic help/man)
+- [ ] Script mode (run focs.sh) without menu
+- [ ] Global install
+- [ ] Adding new test cases (Stopping fuzzing in progress to update testcases)
 
 ### Contributing
 This project needs allot of work, but is used for hobbyist reasons. If you see something that may need a change, please fork and add a change. We are open to issues and merge requests.
-
-### Notes
-- Multiple architectures for libraries may be needed [debian](https://wiki.debian.org/Multiarch/HOWTO)

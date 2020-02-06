@@ -1,4 +1,5 @@
 #!/bin/bash
+INFO='\033[1;34m'
 
 clean_firmware() {
   DIR="/usr/share/focs/"
@@ -9,14 +10,92 @@ clean_firmware() {
     ;;
     *) echo -e "${INFO}Cleaning EVERYTHING...${NC}"
 		# Added functionality to not remove afl dir 
-		sudo rm -fr $(find /usr/share/focs/* | grep -v /usr/share/focs/afl) 
+		sudo rm -fr /usr/share/focs/firmware-library /usr/share/focs/results
 
-       	sudo mkdir /usr/share/focs/firmware-library/
-  		sudo cp -r $(sudo find / -path "*afl" 2>&- ) /usr/share/focs/
   		user=$USER
 		sudo chown $user:$user -R /usr/share/focs
     ;;
   esac
+}
+
+#practically all zalewski's code, but necessary for modularity
+qemu_mode_setup() {
+	clear
+
+	echo -e "${INFO}Running the QEMU setup script${NC}"
+
+	export CPU_TARGET="$1"
+
+	ORIG_CPU_TARGET="$CPU_TARGET"
+
+	test "$CPU_TARGET" = "" && CPU_TARGET="`uname -m`"
+	test "$CPU_TARGET" = "i686" && CPU_TARGET="i386"
+	
+	cd /usr/share/focs/afl/qemu_mode/qemu-*/ || { echo -e "${ERROR}The qemu directory isn't where it's supposed to be.${NC}" && exit 1; }
+
+	CFLAGS="-O3 -ggdb" 
+
+	sudo ./configure --disable-system --enable-linux-user --disable-gtk --disable-sdl --disable-vnc --target-list="${CPU_TARGET}-linux-user" --enable-pie --enable-kvm || { echo -e "${ERROR}Failure configuring the QEMU files. Check the /usr/share/focs/afl/qemu_mode/ directory.${NC}" && exit 1; }
+
+	echo -e "${INFO}Configuration complete.${NC}"
+
+	echo -e "${INFO}Attempting to build QEMU (fingers crossed!)...${NC}"
+
+	sudo make || { echo -e "${ERROR}Error with the make command for QEMU mode. Check the /usr/share/focs/afl/qemu_mode directory or the script or, idk...${NC}" && exit 1; }
+
+	echo -e "${INFO}Build process successful!${NC}"
+
+	echo -e "${INFO}Copying binary...${NC}"
+
+	sudo cp -f "${CPU_TARGET}-linux-user/qemu-${CPU_TARGET}" "../../afl-qemu-trace" || exit 1
+
+	cd ..
+	ls -l ../afl-qemu-trace || exit 1
+
+	echo -e "${INFO}Successfully created '../afl-qemu-trace'.${NC}"
+
+	if [ "$ORIG_CPU_TARGET" = "" ]; then
+
+	  echo -e "${INFO}Testing the build...${NC}"
+
+	  cd ..
+
+	  make >/dev/null || exit 1
+
+	  gcc test-instr.c -o test-instr || exit 1
+
+	  unset AFL_INST_RATIO
+
+	  echo 0 | ./afl-showmap -m none -Q -q -o .test-instr0 ./test-instr || exit 1
+	  echo 1 | ./afl-showmap -m none -Q -q -o .test-instr1 ./test-instr || exit 1
+
+	  rm -f test-instr
+
+	  cmp -s .test-instr0 .test-instr1
+	  DR="$?"
+
+	  rm -f .test-instr0 .test-instr1
+
+	  if [ "$DR" = "0" ]; then
+
+	    echo -e "${ERROR}[-] Error: afl-qemu-trace instrumentation doesn't seem to work!${NC}"
+	    exit 1
+
+	  fi
+
+	  echo -e "${INFO}[+] Instrumentation tests passed.${NC}"
+	  echo -e "${INFO}[+] All set, you can now use the -Q mode in afl-fuzz!${NC}"
+
+	else
+
+	  echo -e "${INFO}[!] Note: can't test instrumentation when CPU_TARGET set."
+
+	fi
+
+	cd ..
+
+	{ sudo make install && echo -e "${INFO}Running make install... likeliness to fail is higher here...${NC}"; } || { echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1; }
+
 }
 
 focs_install() {
@@ -28,15 +107,13 @@ focs_install() {
 	echo -e "${INFO}${NC}"
 	echo -e "${ERROR}Text in red indicates that something did not go as planned...${NC}"
 	echo -e "${NC}White text is typically just output from a currently running command.${NC}"
-	echo -e "${ACT}Green text on black background means you have to do something!${NC}"
 	echo -e "${INFO}${NC}"
 	echo -e "${INFO}The very first thing you will be asked to do after confirming you want to continue${NC}"
 	echo -e "${INFO}is you will be asked for your sudo password. If you are not a sudoer, this is probably${NC}"
 	echo -e "${INFO}not something you should be tinkering with.${NC}"
 	echo -e "${INFO}${NC}"
-	echo -e "${INFO}Also, this script has currently only been tested on limited Linux distros.${NC}"
 	echo -e "${INFO}The script will check what distro you're running and if it is supported.${NC}"
-	echo -e "${INFO}If it is not supported, I will direct you to file in the docs directory 'how_to_do_manually_what_FOCS_is_doing_for_you.txt'${NC}"
+	echo -e "${INFO}If it is not supported, carry on at your own risk.${NC}"
 	echo -e "${ACT}Press 'q' to quit or enter any other key to continue...${NC}"
 
 	read x
@@ -158,8 +235,7 @@ focs_install() {
 
 		{ cd qemu_mode && echo -e "${INFO}qemu_mode directory is where it's supposed to be...${NC}"; } || { echo -e "${ERROR}qemu_mode directory is not where it's supposed to be...${NC}" && exit 1; }
 
-		# Decided to host my own version of QEMU
-		# So I've commented out the lines to grab a new copy
+		# Decided to host my own version of QEMU # So I've commented out the lines to grab a new copy
 		VERSION="2.10.0"
 		QEMU_URL="http://download.qemu-project.org/qemu-${VERSION}.tar.xz"
 		QEMU_SHA384="68216c935487bc8c0596ac309e1e3ee75c2c4ce898aab796faa321db5740609ced365fedda025678d072d09ac8928105"
@@ -237,11 +313,11 @@ focs_firmware-prep() {
 
 	# Scripting mode if args passed
 	if [[ -z $1 ]]; then
-		echo -e "${INFO}Select the firmware image you would like to fuzz:${NC}"
+		echo -e "${INFO}Select the firmware image you would like to fuzz: ${NC}"
 
 		# Options from directory
 		f=$(ls /usr/share/focs/firmware-library)
-		PS3="Select an option"
+		PS3="Select an option: "
 		select file in "${f[@]}"; do
 			[[ -n $file ]] || { echo -e "${WARN} Invalid choice. Try again..." >&2; continue; }
 			break
@@ -265,7 +341,7 @@ focs_firmware-prep() {
 		# TODO: Add suggestions for fuzzing
 		# qemu-$THEARCH $DIR --help || qemu-$THEARCH $DIR -h
 		# TODO This needs to be stream lined
-		echo -e "${INFO}Specifc the args you would like to use for the binary"
+		echo -e "${INFO}Specify the args you would like to use for the binary"
 		read -a args
 		if [[ -z $args ]]; then
 			args="seed"
@@ -290,12 +366,12 @@ focs_firmware-prep() {
 		# file="$${1}.extracted"
 	fi
 
-	# Binary to fuzz, qemu arguements, architecture, path of original firmware
+	# Binary to fuzz, qemu arguments, architecture, path of original firmware
 	auto-fuzz $DIR $args $THEARCH $file
 }
 
 
-# TODO: Final frontiner
+# TODO: Final frontier
 auto-fuzz () {
 	user=$USER
 	sudo chown $user -R /usr/share/focs
@@ -308,13 +384,22 @@ auto-fuzz () {
 		exit 1
 	fi;
 
+	#TODO: figure out if 'performance' error is consistent.
+	# if so, add that in here as well.
 	echo 'core' | sudo tee /proc/sys/kernel/core_pattern
+
+	qemu_mode_setup $3
 
 	FOCS="/usr/share/focs/firmware-library"
 	cd "$FOCS/$4/" || { echo -e "${ERROR}You might've entered a wrong directory...${NC}" && exit 1; }
 
+	# get location of 'lib' directory for QEMU
+	LIB="$(find $FOCS/$4 -name lib | sort | head -n 1)"
+
 	export COM=qemu-$3 # "$(file -b -e elf * | grep -o ','.*',' | tr -d ',' | tr -d ' ' | uniq | tr '[:upper:]' '[:lower:]')"
 
+	export QEMU_LD_PREFIX=$(dirname $LIB)
+	
 	MEM=1024
 	MSG=""
 
@@ -331,7 +416,7 @@ auto-fuzz () {
 
 		MEM=$(( $MEM * 2 ))
 
-		ulimit -Sv $["$MEM" << 10]
+		ulimit -Sv $[$MEM << 10]
 		nohup $COM $1
 		sleep 1
 		MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
@@ -341,33 +426,37 @@ auto-fuzz () {
 
 	echo -e "${INFO}Now we are going to minimize the seed corpus.${NC}"
 	echo -e "${INFO}Errors are likely to occur here, so if problems persist,${NC}"
-	echo -e "${INFO}Comment out the command 'afl-cmin' in the auto-fuzz.sh file${NC}" && sleep 3
+	echo -e "${INFO}Comment out the command 'afl-cmin' in the auto-fuzz function${NC}" && sleep 3
 
 	{ afl-cmin -Q -m $MEM -i in/ -o in2/ $1 $2 && echo -e "${INFO}Corpus seemed to minimize successfully!${NC}"; } || { echo -e "${ERROR}An error occurred with 'afl-cmin'. Scroll up for more details!${NC}" && exit 1; }
 
 
-	# TODO: Finishing moving orginial test cases for genertated cases
+	# TODO: Finishing moving orginal test cases for genertated cases
 	if [[ ! -d "in.bak" ]] ; then
-		mv in/ in.bak/
+		mv in in.bak
 		echo -e "${INFO}A backup of your original test cases are stored in the in.bak directory"
-	else
-		rm -fr in
-		mv in2 in
 	fi
+
+	rm -fr in
+	mv in2 in
 
 	# TODO: No save and not continue
-	if [[ -z $(ls out/*) ]] ; then
-	   echo -e "${INFO} Would you like to continue your previous job? (Y/n)"
-	   read OPT
+	# commenting this out for now
+	# script threw error: 'ls: cannot access 'out/*': No such file or directory'
+	# solve ASAP
+	#if [[ -z $(ls out/*) ]] ; then
+	#	echo -e "${INFO} Would you like to continue your previous job? (Y/n)"
+	#	read OPT
 
-	   if [[ ${OPT,,} == 'n' ]]; then
-	        rm -fr out/*
-	        rm -fr in
- 	   else
-            mv out/{crashes/*,hanges/*} in/
-	        mv in2 in
-	   fi
-	fi
+	#	if [[ ${OPT,,} == 'n' ]]; then
+	#        	rm -fr out/*
+	#        	rm -fr in
+ 	#	else
+	#		rm -rf in/*
+        #   		mv out/{crashes/*,hangs/*} in/
+	#   	fi
+	#fi
+
 	clear
 
 	# CPU=$(nproc)
@@ -384,17 +473,14 @@ auto-fuzz () {
 	#  	echo "${INFO} Naming master fuzzer FOCS0${IN}"
 	# 	afl-fuzz -Q -m $MEM -i in/ -o out/ -M FOCS0 $1 $2
 	# fi
-	echo "${INFO} Naming master fuzzer FOCS0${NC}"
+	echo -e "${INFO}Naming master fuzzer FOCS0${NC}"
 	afl-fuzz -Q -m $MEM -i in/ -o out/ -M FOCS0 $1 $2
 }
 
 extract () {
 	clear
 
-	echo -e "\n${INFO}Running the extract script for FOCS${NC}"
-	echo -e "${INFO}This script attempts to extract the firmware from the firmware image${NC}"
-	echo -e "${INFO}and identify its architecture. It also attempts to compile AFL to work${NC}"
-	echo -e "${INFO}with the identified architecture.${NC}"
+	echo -e "${INFO}Running the extraction function:${NC}"
 	echo -e "${INFO}${NC}"
 	echo -e "${INFO}This can throw some issues, and this is certainly the part that has the${NC}"
 	echo -e "${INFO}most trouble across Linix distros. If you are moving ahead with an unsupported${NC}"
@@ -412,14 +498,19 @@ extract () {
 	if [[ -z $1 ]]; then
 		echo -e "\n\n${ACT}What is the name of the file you would like to extract? (relative or fixed path accepted)${NC}"
 		read file
+		file=$(basename $file)
 
 	else
-		file=$1
+		file=$(basename $1)
 	fi
 
+	# move file to focs directory for extraction and clean up
+	# TODO: change the 'cp' to 'mv' once testing is done.
 	sudo cp $file /usr/share/focs/ || { echo -e "${ERROR}Couldn't move the file to the /usr/share/focs directory... check that it exists already.${NC}" && exit 1; };
 
 	cd /usr/share/focs/ || { echo -e "${ERROR}Issue jumping into the /usr/share/focs directory. Check that it exists.${NC}" && exit 1; };
+
+	# extract to 
 	sudo binwalk -e /usr/share/focs/$file || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; }; 
 
 	find _*/ -name 'bin'
@@ -435,256 +526,33 @@ extract () {
 
 	THEDIR="$(find _*/ -name 'bin' | sort | head -1)"
 	THISDIR="$(echo $PWD)"
+	# get the architecture for naming
 	THEARCH="$(file -b -e elf $THEDIR/* | grep -o ','.*',' | tr -d ' ' | tr -d ',' | uniq | tr '[:upper:]' '[:lower:]')"
-	NEWDIR="$(echo '/usr/share/focs/firmware-library/'$THEARCH$(echo _*/))"
+	NEWDIR="$(echo '/usr/share/focs/firmware-library/'$THEARCH$(echo _*))"
 
-	sudo mkdir $NEWDIR || { echo -e "${ERROR}The NEWDIR variable is wrong... Check the script${NC}" && exit 1; }
+	# move the extracted file and rename as new directory
+	sudo mv _$file* $NEWDIR || { echo -e "${ERROR}The NEWDIR variable is wrong... Check the script${NC}" && exit 1; }
 
-	in="in/"
-	out="out/"
+	in="$NEWDIR/in/"
+	out="$NEWDIR/out/"
 
-	sudo mkdir $NEWDIR$in
-	sudo mkdir $NEWDIR$out
+	sudo mkdir $in
+	sudo mkdir $out
 
-	{ sudo cp $(find /usr/share/focs/afl/testcases/ -type f) $NEWDIR$in; } || { echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email ztaylor3@uncc.edu to resolve.${NC}" && exit 1; }
+	# add test cases from AFL's example test bench. 
+	{ sudo cp $(find /usr/share/focs/afl/testcases/ -type f) $in; } || { echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email vstech@protonmail.ch to resolve.${NC}" && exit 1; }
 
-	scrpt="auto-fuzz.sh"
-	dr="auto-fuzz"
+	scrpt="$(pwd)/auto-fuzz.sh"
+	dr="$NEWDIR/auto-fuzz"
 
-	sudo ln -s $(pwd)$scrpt $NEWDIR$dr
+	sudo ln -s $scrpt $dr
 
-	sudo mv $file $NEWDIR || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
-
-	sudo cp -r _*/* $NEWDIR/ || { echo -e "${ERROR}Issue copying everything into the newly created directory.${NC}" && exit 1; }
-
-	sudo rm -rf _*/ || { echo -e "${ERROR}Error removing the firmware folder... Check script for where folder was created/supposed to be.${NC}" && exit 1; }
-
-	export CPU_TARGET="$(echo $THEARCH)"
-
-	cd afl/qemu_mode/
-
-	ORIG_CPU_TARGET="$CPU_TARGET"
-
-	test "$CPU_TARGET" = "" && CPU_TARGET="`uname -m`"
-	test "$CPU_TARGET" = "i686" && CPU_TARGET="i386"
+	# backup the firmware file to the new directory
+	sudo mv $file $NEWDIR/ || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
 	
-	cd qemu-*/ || { echo -e "${ERROR}The qemu directory isn't where it's supposed to be. Or your PWD is screwy.${NC}" && exit 1; }
-
-	CFLAGS="-O3 -ggdb" 
-
-	sudo ./configure --disable-system --enable-linux-user --disable-gtk --disable-sdl --disable-vnc --target-list="${CPU_TARGET}-linux-user" --enable-pie --enable-kvm || { echo -e "${ERROR}Failure configuring the QEMU files. Check the /usr/share/focs/afl/qemu_mode/ directory.${NC}" && exit 1; }
-
-	echo "${INFO}Configuration complete.${NC}"
-
-	echo "${INFO}Attempting to build QEMU (fingers crossed!)...${NC}"
-
-	sudo make || { echo -e "${ERROR}Error with the make command for QEMU mode. Check the /usr/share/focs/afl/qemu_mode directory or the script or, idk...${NC}" && exit 1; }
-
-	echo "${INFO}Build process successful!${NC}"
-
-	echo "${INFO}Copying binary...${NC}"
-
-	sudo cp -f "${CPU_TARGET}-linux-user/qemu-${CPU_TARGET}" "../../afl-qemu-trace" || exit 1
-
-	cd ..
-	ls -l ../afl-qemu-trace || exit 1
-
-	echo "${INFO}Successfully created '../afl-qemu-trace'.${NC}"
-
-	if [ "$ORIG_CPU_TARGET" = "" ]; then
-
-	  echo "${INFO}Testing the build...${NC}"
-
-	  cd ..
-
-	  make >/dev/null || exit 1
-
-	  gcc test-instr.c -o test-instr || exit 1
-
-	  unset AFL_INST_RATIO
-
-	  echo 0 | ./afl-showmap -m none -Q -q -o .test-instr0 ./test-instr || exit 1
-	  echo 1 | ./afl-showmap -m none -Q -q -o .test-instr1 ./test-instr || exit 1
-
-	  rm -f test-instr
-
-	  cmp -s .test-instr0 .test-instr1
-	  DR="$?"
-
-	  rm -f .test-instr0 .test-instr1
-
-	  if [ "$DR" = "0" ]; then
-
-	    echo "${ERROR}[-] Error: afl-qemu-trace instrumentation doesn't seem to work!${NC}"
-	    exit 1
-
-	  fi
-
-	  echo "${INFO}[+] Instrumentation tests passed.${NC}"
-	  echo "${INFO}[+] All set, you can now use the -Q mode in afl-fuzz!${NC}"
-
-	else
-
-	  echo "${INFO}[!] Note: can't test instrumentation when CPU_TARGET set."
-
-	fi
-
-	cd ..
-
-	{ sudo make install && echo -e "${INFO}Running make install... likeliness to fail is higher here...${NC}"; } || { echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1; }
-
 	cd $THISDIR
 
-	echo -e "${INFO}#################################################${NC}"
-	echo -e "${INFO}      You only need to run this file again       ${NC}"
-	echo -e "${INFO} if you change the architecture you are fuzzing. ${NC}"
-	echo -e "${INFO}#################################################${NC}"
-}
-
-run_all_the_things () {
-	clear
-
-	echo -e "${INFO}Running the extract script for FOCS${NC}"
-	echo -e "${INFO}This script attempts to extract the firmware from the firmware image${NC}"
-	echo -e "${INFO}and identify its architecture. It also attempts to compile AFL to work${NC}"
-	echo -e "${INFO}with the identified architecture.${NC}"
-	echo -e "${INFO}${NC}"
-	echo -e "${INFO}This can throw some issues, and this is certainly the part that has the${NC}"
-	echo -e "${INFO}most trouble across Linix distros. If you are moving ahead with an unsupported${NC}"
-	echo -e "${INFO}distribution, be very wary of error messages from the system, as my error messages${NC}"
-	echo -e "${INFO}are typically only catching issues with this script itself and not things like the${NC}"
-	echo -e "${INFO}'make' command.${NC}"
-	echo -e "${INFO}${NC}"
-	echo -e "${ACT}If you would like to quit to do some testing, enter 'q', otherwise, enter any other key to continue...${NC}"
-
-	read x
-
-	if [[ $x == 'q' ]];then
-		echo -e "${INFO}For the best...${NC}" && exit 1
-	fi
-
-	sudo mv $1 /usr/share/focs/ || { echo -e "${ERROR}Couldn't move the file to the /usr/share/focs directory... check that it exists already.${NC}" && exit 1; };
-
-	cd /usr/share/focs/ || { echo -e "${ERROR}Issue jumping into the /usr/share/focs directory. Check that it exists.${NC}" && exit 1; };
-	sudo binwalk -e /usr/share/focs/$1 || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; }; 
-
-	find _*/ -name 'bin'
-
-	ISSUE=$(echo "$?")
-
-	if [[ "$ISSUE" -eq 0 ]]
-	then
-		echo -e "${INFO}Awesome! binwalk extracted the image perfectly!${NC}"
-	else
-		echo -e "${ERROR}Darn... binwalk didn't extract the image perfectly...${NC}" && exit 1
-	fi;
-
-	THEDIR="$(find _*/ -name 'bin' | sort | head -1)"
-	THISDIR="$(echo $PWD)"
-	THEARCH="$(file -b -e elf $THEDIR/* | grep -o ','.*',' | tr -d ' ' | tr -d ',' | uniq | tr '[:upper:]' '[:lower:]')"
-	NEWDIR="$(echo '/usr/share/focs/firmware-library/'$THEARCH$(echo _*/))"
-
-	sudo mkdir $NEWDIR || { echo -e "${ERROR}The NEWDIR variable is wrong... Check the script${NC}" && exit 1; }
-
-	in="in/"
-	out="out/"
-
-	sudo mkdir $NEWDIR$in
-	sudo mkdir $NEWDIR$out
-
-	{ sudo cp $(find /usr/share/focs/afl/testcases/ -type f) $NEWDIR$in; } || { echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email ztaylor3@uncc.edu to resolve.${NC}" && exit 1; }
-
-	scrpt="auto-fuzz.sh"
-	dr="auto-fuzz"
-
-	sudo ln -s $PWD$scrpt $NEWDIR$dr
-
-	sudo mv $1 $NEWDIR || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
-
-	sudo cp -r _*/* $NEWDIR/ || { echo -e "${ERROR}Issue copying everything into the newly created directory.${NC}" && exit 1; }
-
-	sudo rm -rf _*/ || { echo -e "${ERROR}Error removing the firmware folder... Check script for where folder was created/supposed to be.${NC}" && exit 1; }
-
-	export CPU_TARGET="$(echo $THEARCH)"
-
-	cd afl/qemu_mode/
-
-	ORIG_CPU_TARGET="$CPU_TARGET"
-
-	test "$CPU_TARGET" = "" && CPU_TARGET="`uname -m`"
-	test "$CPU_TARGET" = "i686" && CPU_TARGET="i386"
-
-	cd qemu-*/ || { echo -e "${ERROR}The qemu directory isn't where it's supposed to be. Or your PWD is screwy.${NC}" && exit 1; }
-
-	CFLAGS="-O3 -ggdb" 
-
-	sudo ./configure --disable-system --enable-linux-user --disable-gtk --disable-sdl --disable-vnc --target-list="${CPU_TARGET}-linux-user" --enable-pie --enable-kvm || { echo -e "${ERROR}Failure configuring the QEMU files. Check the /usr/share/focs/afl/qemu_mode/ directory.${NC}" && exit 1; }
-
-	echo "${INFO}Configuration complete.${NC}"
-
-	echo "${INFO}Attempting to build QEMU (fingers crossed!)...${NC}"
-
-	sudo make || { echo -e "${ERROR}Error with the make command for QEMU mode. Check the /usr/share/focs/afl/qemu_mode directory or the script or, idk...${NC}" && exit 1; }
-
-	echo "${INFO}Build process successful!${NC}"
-
-	echo "${INFO}Copying binary...${NC}"
-
-	sudo cp -f "${CPU_TARGET}-linux-user/qemu-${CPU_TARGET}" "../../afl-qemu-trace" || exit 1
-
-	cd ..
-	ls -l ../afl-qemu-trace || exit 1
-
-	echo "${INFO}Successfully created '../afl-qemu-trace'.${NC}"
-
-	if [] "$ORIG_CPU_TARGET" = "" ]]; then
-
-	  echo "${INFO}Testing the build...${NC}"
-
-	  cd ..
-
-	  make >/dev/null || exit 1
-
-	  gcc test-instr.c -o test-instr || exit 1
-
-	  unset AFL_INST_RATIO
-
-	  echo 0 | ./afl-showmap -m none -Q -q -o .test-instr0 ./test-instr || exit 1
-	  echo 1 | ./afl-showmap -m none -Q -q -o .test-instr1 ./test-instr || exit 1
-
-	  rm -f test-instr
-
-	  cmp -s .test-instr0 .test-instr1
-	  DR="$?"
-
-	  rm -f .test-instr0 .test-instr1
-
-	  if [[ "$DR" = "0" ]]; then
-
-	    echo "${ERROR}[-] Error: afl-qemu-trace instrumentation doesn't seem to work!${NC}"
-	    exit 1
-
-	  fi
-
-	  echo "${INFO}[+] Instrumentation tests passed.${NC}"
-	  echo "${INFO}[+] All set, you can now use the -Q mode in afl-fuzz!${NC}"
-
-	else
-
-	  echo "${INFO}[!] Note: can't test instrumentation when CPU_TARGET set."
-
-	fi
-
-	cd ..
-
-	{ sudo make install && echo -e "${INFO}Running make install... likeliness to fail is higher here...${NC}"; } || { echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1; }
-
-	cd $THISDIR
-
-	echo -e "${INFO}#################################################${NC}"
-	echo -e "${INFO}      You only need to run this file again       ${NC}"
-	echo -e "${INFO} if you change the architecture you are fuzzing. ${NC}"
-	echo -e "${INFO}#################################################${NC}"
+	echo -e "${INFO}      Extraction complete!       ${NC}"
 }
 
 dialog() {
@@ -693,7 +561,7 @@ dialog() {
 
 ### display main menu ###
 ## TODO Add dialog for --help and man documents
-echo -e "
+echo -e "${INFO}
      ,                                     
      Et           :                        
      E#t         t#,          .,          .
@@ -710,7 +578,7 @@ echo -e "
      E#t          t           jt EG.       
      ;#t                         ,         
       :;                                   
-"
+${NC}"
 
 if [[ -z $1 ]]; then
   # Interactive menu
@@ -728,7 +596,7 @@ if [[ -z $1 ]]; then
 		extract
 		;;
       "run")
-        foc_firmware-prep
+        focs_firmware-prep
         ;;
       # TODO Enable option to clean single firmware
       "clean")

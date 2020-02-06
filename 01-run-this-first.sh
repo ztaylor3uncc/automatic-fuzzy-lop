@@ -49,6 +49,7 @@ dependency () {
 	fi
 
 	if [ ! $VAL03 -eq 0 ]; then
+<<<<<<< HEAD
 		
 		if [ -d /usr/share/focs/ ]; then
 			clear
@@ -68,6 +69,27 @@ dependency () {
 
 		sudo mkdir /usr/share/focs/firmware-library/
 		
+=======
+		
+		if [ -d /usr/share/focs/ ]; then
+			clear
+			echo -e "${INFO}The file /usr/share/focs/ exists.${NC}"
+			echo -e "${INFO}If it exists for a reason that isn't this, quit by pressing 'q'.${NC}"
+			echo -e "${ACT}Otherwise, enter any key to continue.${NC}"
+			
+			read x
+
+			if [ $x == 'q' ]; then
+				clear
+				echo -e "${INFO}Wise choice...${NC}" && exit 1
+			fi
+		else
+			sudo mkdir /usr/share/focs/
+		fi
+
+		sudo mkdir /usr/share/focs/firmware-library/
+		
+>>>>>>> 951a9a64ee174425f75d5ae7458e33f07c60e71c
 		clear
 
 		case $DESK in
@@ -133,6 +155,7 @@ dependency () {
 		cd afl/ #clever, huh?
 
 		echo -e "${INFO}If you see this, everything is going fine so far....${NC}" || { echo -e "${ERROR}Yikes... If you see this there was a very terrible system error...${NC}" && exit 1; }
+<<<<<<< HEAD
 
 		# We have to make it before we do anything else 
 		# (for reasons we can talk about, but are outside the scope
@@ -191,6 +214,66 @@ dependency () {
 
 		cd qemu-*/ || exit 1
 
+=======
+
+		# We have to make it before we do anything else 
+		# (for reasons we can talk about, but are outside the scope
+		# of these comments...).
+		{ sudo make && echo -e "${INFO}Yeah! The make command ran great!${NC}"; } || { echo -e "${ERROR}Issue with the make command. Scroll up for details...${NC}" && exit 1; }
+
+		{ cd qemu_mode && echo -e "${INFO}qemu_mode directory is where it's supposed to be...${NC}"; } || { echo -e "${ERROR}qemu_mode directory is not where it's supposed to be...${NC}" && exit 1; }
+
+		# Decided to host my own version of QEMU
+		# So I've commented out the lines to grab a new copy
+		VERSION="2.10.0"
+		QEMU_URL="http://download.qemu-project.org/qemu-${VERSION}.tar.xz"
+		QEMU_SHA384="68216c935487bc8c0596ac309e1e3ee75c2c4ce898aab796faa321db5740609ced365fedda025678d072d09ac8928105"
+		cd qemu_mode
+		# Dealing with QEMU now
+		if [ ! "`uname -s`" = "Linux" ]; then
+		  echo -e "${ERROR}QEMU instrumentation is supported only on Linux.${NC}" && exit 1
+		fi
+
+		if [ ! -f "patches/afl-qemu-cpu-inl.h" -o ! -f "../config.h" ]; then
+		  echo -e "${ERROR}Key files not found - wrong working directory?${NC}" && exit 1
+		fi
+
+		if [ ! -f "../afl-showmap" ]; then
+		  echo -e "${ERROR}../afl-showmap not found - compile AFL first!${NC}" && exit 1
+		fi
+
+		ARCHIVE="`basename -- "$QEMU_URL"`"
+		CKSUM=`sha384sum -- "$ARCHIVE" 2>/dev/null | cut -d' ' -f1`
+
+		if [ ! "$CKSUM" = "$QEMU_SHA384" ]; then
+
+		  echo -e "${RED}[*] Downloading QEMU ${VERSION} from the web...${NC}"
+		  rm -f "$ARCHIVE"
+		  wget -O "$ARCHIVE" -- "$QEMU_URL" || exit 1
+
+		  CKSUM=`sha384sum -- "$ARCHIVE" 2>/dev/null | cut -d' ' -f1`
+
+		fi
+
+		if [ "$CKSUM" = "$QEMU_SHA384" ]; then
+
+		  echo -e "${INFO}[+] Cryptographic signature on $ARCHIVE checks out.${NC}"
+
+		else
+
+		  echo -e "${ERROR}[-] Error: signature mismatch on $ARCHIVE (perhaps download error?).${NC}"
+		  exit 1
+
+		fi
+
+		echo -e "${INFO}[*] Uncompressing archive (this will take a while)...${NC}"
+
+		rm -rf "qemu-${VERSION}" || exit 1
+		tar xf "$ARCHIVE" || exit 1
+
+		cd qemu-*/ || exit 1
+
+>>>>>>> 951a9a64ee174425f75d5ae7458e33f07c60e71c
 		echo -e "${INFO}[*] Applying patches..."
 
 		patch -p1 <../patches/elfload.diff || exit 1
@@ -231,12 +314,21 @@ extract () {
 	fi
 
 	sudo mv $1 /usr/share/focs/ || { echo -e "${ERROR}Couldn't move the file to the /usr/share/focs directory... check that it exists already.${NC}" && exit 1; };
+<<<<<<< HEAD
 
 	cd /usr/share/focs/ || { echo -e "${ERROR}Issue jumping into the /usr/share/focs directory. Check that it exists.${NC}" && exit 1; };
 	sudo binwalk -e /usr/share/focs/$1 || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; }; 
 
 	find _*/ -name 'bin'
 
+=======
+
+	cd /usr/share/focs/ || { echo -e "${ERROR}Issue jumping into the /usr/share/focs directory. Check that it exists.${NC}" && exit 1; };
+	sudo binwalk -e /usr/share/focs/$1 || { echo -e "${ERROR}Unfortunately, binwalk threw an issue... This can't be fixed by me, I'm afraid...${NC}" && exit 1; }; 
+
+	find _*/ -name 'bin'
+
+>>>>>>> 951a9a64ee174425f75d5ae7458e33f07c60e71c
 	ISSUE=$(echo "$?")
 
 	if [ "$ISSUE" -eq 0 ]
@@ -245,6 +337,7 @@ extract () {
 	else
 		echo -e "${ERROR}Darn... binwalk didn't extract the image perfectly...${NC}" && exit 1
 	fi;
+<<<<<<< HEAD
 
 	THEDIR="$(find _*/ -name 'bin' | sort | head -1)"
 	THISDIR="$(echo $PWD)"
@@ -270,6 +363,33 @@ extract () {
 
 	sudo cp -r _*/* $NEWDIR/ || { echo -e "${ERROR}Issue copying everything into the newly created directory.${NC}" && exit 1; }
 
+=======
+
+	THEDIR="$(find _*/ -name 'bin' | sort | head -1)"
+	THISDIR="$(echo $PWD)"
+	THEARCH="$(file -b -e elf $THEDIR/* | grep -o ','.*',' | tr -d ' ' | tr -d ',' | uniq | tr '[:upper:]' '[:lower:]')"
+	NEWDIR="$(echo '/usr/share/focs/firmware-library/'$THEARCH$(echo _*/))"
+
+	sudo mkdir $NEWDIR || { echo -e "${ERROR}The NEWDIR variable is wrong... Check the script${NC}" && exit 1; }
+
+	in="in/"
+	out="out/"
+
+	sudo mkdir $NEWDIR$in
+	sudo mkdir $NEWDIR$out
+
+	{ sudo cp $(find /usr/share/focs/afl/testcases/ -type f) $NEWDIR$in; } || { echo -e "${ERROR}Issue copying the test cases over to the new directory. This is probably an issue with the script. Email ztaylor3@uncc.edu to resolve.${NC}" && exit 1; }
+
+	scrpt="auto-fuzz.sh"
+	dr="auto-fuzz"
+
+	sudo ln -s $PWD$scrpt $NEWDIR$dr
+
+	sudo mv $1 $NEWDIR || { echo -e "${ERROR}Issue moving the img file to the new directory${NC}" && exit 1; }
+
+	sudo cp -r _*/* $NEWDIR/ || { echo -e "${ERROR}Issue copying everything into the newly created directory.${NC}" && exit 1; }
+
+>>>>>>> 951a9a64ee174425f75d5ae7458e33f07c60e71c
 	sudo rm -rf _*/ || { echo -e "${ERROR}Error removing the firmware folder... Check script for where folder was created/supposed to be.${NC}" && exit 1; }
 
 	export CPU_TARGET="$(echo $THEARCH)"
@@ -335,6 +455,7 @@ extract () {
 
 	  echo "${INFO}[+] Instrumentation tests passed.${NC}"
 	  echo "${INFO}[+] All set, you can now use the -Q mode in afl-fuzz!${NC}"
+<<<<<<< HEAD
 
 	else
 
@@ -368,6 +489,41 @@ library () {
 
 	echo -e "${INFO}${NC}"
 
+=======
+
+	else
+
+	  echo "${INFO}[!] Note: can't test instrumentation when CPU_TARGET set."
+
+	fi
+
+	cd ..
+
+	{ sudo make install && echo -e "${INFO}Running make install... likeliness to fail is higher here...${NC}"; } || { echo -e "${ERROR}Uh oh... there was a problem with make install... Scroll up for error details${NC}" && exit 1; }
+
+	cd $THISDIR
+
+	echo -e "${INFO}#################################################${NC}"
+	echo -e "${INFO}      You only need to run this file again       ${NC}"
+	echo -e "${INFO} if you change the architecture you are fuzzing. ${NC}"
+	echo -e "${INFO}#################################################${NC}"
+}
+
+library () {
+	clear
+
+	echo -e "${INFO}Type the name of the firmware image you would like to fuzz:${NC}"
+
+	for f in $(ls /usr/share/focs/firmware-library); do
+		f="${f%.*}"
+		echo $f | cut -d _ -f 2  
+	done
+
+	read file
+
+	echo -e "${INFO}${NC}"
+
+>>>>>>> 951a9a64ee174425f75d5ae7458e33f07c60e71c
 	file $(find /usr/share/focs/firmware-library/*$file*/ -type f -executable) | grep -i 'executable' | awk -F: '{print $1}' | sed 's:.*/::' | sort
 
 	read target
@@ -383,6 +539,7 @@ library () {
 
 
 auto-fuzz () {
+<<<<<<< HEAD
 
 
 }
@@ -429,6 +586,114 @@ main () {
 
 		extract $file
 
+=======
+	if [[ $# -ne 1 ]] && [[ $# -ne 2 ]]; then
+		echo -e "${ERROR}usage ./auto-fuzz /path/to/binary <memory to allocate>${NC}"
+		echo -e "${ERROR}There is an optional third argument -- @@ .\nThis can be used to indicate that a file from stdin shoudl be used as input.${NC}"
+		echo -e "${ERROR}The path to binary is likely something like squashfs-root/bin/<binary>${NC}"
+		exit 1
+	fi;
+
+	echo 'core' | sudo tee /proc/sys/kernel/core_pattern
+
+	THISDIR="$(echo $PWD)"
+
+	TARGETDIR="$(find ./ -name 'bin' | sort | head -1)/"
+
+	cd $TARGETDIR || { echo -e "${ERROR}You might've entered a wrong directory...${NC}" && exit 1; }
+
+	export COM=qemu-"$(file -b -e elf * | grep -o ','.*',' | tr -d ',' | tr -d ' ' | uniq | tr '[:upper:]' '[:lower:]')"
+
+	cd ..
+
+	export QEMU_LD_PREFIX="$(echo $PWD)"
+
+	cd $THISDIR
+
+	MEM=1024
+	MSG=""
+
+	ulimit -Sv $[$MEM << 10]
+	nohup $COM $1
+	sleep 1;
+	MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
+
+	while [[ "$MSG" == "Unable to reserve" ]]; do
+		if [ $MEM -gt 8191 ]; then
+			echo -e "${ERROR}Whoa there! The binary wants more than 8GB of virtual memory... Do some testing with QEMU's user-emulation mode to see if this binary can be run!${NC}" && rm nohup.out && exit 1;
+		fi;
+
+		MEM=$(( $MEM * 2 ))
+
+		ulimit -Sv $[$MEM << 10]
+		nohup $COM $1
+		sleep 1
+		MSG="$(tail -n 1 nohup.out | grep -oh 'Unable to reserve')"
+	done;
+
+	rm nohup.out
+
+	echo -e "${INFO}Now we are going to minimize the seed corpus.${NC}"
+	echo -e "${INFO}Errors are likely to occur here, so if problems persist,${NC}"
+	echo -e "${INFO}Comment out the command 'afl-cmin' in the auto-fuzz.sh file${NC}" && sleep 3
+
+	{ afl-cmin -Q -m $MEM -i in/ -o in2/ $1 $2 && echo -e "${INFO}Corpus seemed to minimize successfully!${NC}"; } || { echo -e "${ERROR}An error occurred with 'afl-cmin'. Scroll up for more details!${NC}" && exit 1; }
+
+	if [ -d "in.bak" ]; then
+		mv in2/ in/
+	else
+		mv in/ in.bak/
+		mv in2/ in/
+		echo -e "${INFO}A backup of your original test cases are stored in the in.bak directory"
+	fi
+
+	afl-fuzz -Q -m $MEM -i in/ -o out/ $1 $2
+
+}
+
+main () {
+	clear
+
+	echo -e "${INFO}${NC}"
+
+	echo -e "$INFO  ███████╗ ██████╗  ██████╗███████╗  ${NC}"
+	echo -e "$INFO  ██╔════╝██╔═══██╗██╔════╝██╔════╝  ${NC}"
+	echo -e "$INFO  █████╗  ██║   ██║██║     ███████╗  ${NC}"
+	echo -e "$INFO  ██╔══╝  ██║   ██║██║     ╚════██║  ${NC}"
+	echo -e "$INFO  ██║     ╚██████╔╝╚██████╗███████║  ${NC}"
+	echo -e "$INFO  ╚═╝      ╚═════╝  ╚═════╝╚══════╝  ${NC}"
+	
+	if [ $1 -eq 0 ]; then
+		library
+	elif [ $1 -eq 1 ]; then 
+		file=$(basename $2)
+		if [ -d /usr/share/focs/firmware-library/*$file.extracted ]; then
+			echo -e "${INFO}Firmware images exist in the library for the following architectures: ${NC}"
+			for a in $(ls /usr/share/focs/firmware-library | grep $file.extracted); do
+				ARCH=$(echo $a | cut -d _ -f 1 | tr 'a-z' 'A-Z')
+				echo -e "${INFO}$ARCH${NC}"
+			done;
+			
+			echo -e "${ACT}If you would like to continue with this exraction${NC}"
+			echo -e "${ACT}${NC}"
+		       	echo -e "${ACT}* (which only recommended if you know the architecture of the file${NC}"
+			echo -e "${ACT}you are extracting and know it doesn't exist here already) *${NC}"
+			echo -e "${ACT}${NC}"
+		        echo -e "${ACT}press 'e' to start extractig. Otherwise, any other key will just take you to the library.${NC}"
+			read x
+		
+			if [ "$x" != 'e' ]; then
+				library
+			fi
+		fi
+		
+		if [ ! -d /usr/share/focs/firmware-library ]; then
+			sudo mkdir /usr/share/focs/firmware-library
+		fi
+
+		extract $file
+
+>>>>>>> 951a9a64ee174425f75d5ae7458e33f07c60e71c
 	else
 		echo -e "${ERROR}Usage:${NC}"
 		echo -e "${ERROR}./focs <path/to/binary>${NC}"

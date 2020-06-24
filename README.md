@@ -46,9 +46,10 @@ This project is super experimental. Use at your own peril.
 - [ ] Fix in2/ on re-runs
 - [ ] More generalized output of AFL errors (fork)
 - [ ] Scale jobs
-- [ ] Update extraction functionality with ubi_reader and sasquatch
-- [ ] "Upgrade" to AFL++
 - [ ] Collect resulting crashes and hangs in a backup file so you can fuzz previous binaries without losing progress
+- [ ] Add ability to checksum binaries with crashes to create a library of exploitable binaryes (in IoT, binaries are often not updated, so we can map what we learned to what we find later)
+CANCELLED - [ ] Update extraction functionality with ubi_reader and sasquatch
+CANCELLED - [ ] "Upgrade" to AFL++
 
 ### Contributing
 This project needs alot of work, but is used for hobbyist reasons. If you see something that may need a change, please fork and add a change. We are open to issues and merge requests.

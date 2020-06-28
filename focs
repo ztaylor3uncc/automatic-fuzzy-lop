@@ -1,0 +1,248 @@
+#!/usr/bin/python3
+#TODO: Add menu option to change PATH to AFLplusplus directory
+import os, sys, hashlib, subprocess
+
+def error():
+    print("\nOof! You've hit a problem...")
+    print("Exiting!")
+    exit()
+
+def help():
+    print('''
+Usage: focs
+Usage: focs <folder>
+Usage: focs <binary> <args>
+
+Five 0'Clock Shadow (FOCS) is a framework for fuzzing things using QEMU and AFL++. Its primpary focus is on fuzzing firmware
+binaries from non-x86 architectures. This measn you have to use it in a number of unique ways. Here are the ones that really
+matter:
+
+1. You must have AFL++ installed and have afl-fuzz and afl-cmin in your $PATH. If you don't FOCS won't work.
+2. FOCS is meant to be run from the root direcotry of an extracted firmware binary. It stores data related
+to the banner that will matter in the future in /usr/share/focs/firmware_library (but you can change this
+by editing the source code), and that information can only be collected if FOCS is run from an appropriate
+directory.
+3. @@ is an AFL specific option that is meant to indicate where input should replace the @@ while fuzzing. E.g.,
+If the test case is 'asdf' then 'afl-fuzz -i in -o out cat @@' would literally execute 'cat asdf'. This is different
+from not using the @@ option, which is more akin to executing 'cat < asdf'. Both versions have their uses, and testing
+is required to determine if the binary you are fuzzing needs the @@ or not, HOWEVER: @@ IS THE SAFE OPTION HERE!!! IT
+IS NOT INCLUDED BY DEFAULT, SO IT IS SAFER TO ENTER '@@' WHEN PROMPTED TO ENTER ARGUMENTS!!!.
+
+EXAMPLE USAGE:
+./focs - calling without arguments will guide you through the process, but only run it from within the target firmwares root directory
+./focs /path/to/binary @@ - this is the most basic usage of focs on a target binary. Pertinent inforamtion will not be collected.
+./focs /directory/ - TODO######
+
+Other help is coming!!!
+    ''')
+
+def focs_install():
+    print('''
+==> HEADS UP: You should be running focs_install with root permissions. If you are not, you will likely hit an error shortly.
+==> HEADS UP: You should NOT run any other part of FOCS with root permissions. That is all, thank you.
+
+FOCS will do the following:
+    - Create the following files & directories:
+        - /usr/local/bin/ (this probably already exists - no permissions will be changed.)
+        - /usr/share/focs/ (755 permissions)
+        - /usr/share/focs/firmware_library/ (755 permissions)
+        - /usr/share/focs/firmware_library/__MANIFEST (766 permissions)
+        - /usr/share/focs/results/ (777 permissions)
+        - /usr/share/focs/path (777 permissions)
+        - /usr/share/focs/test_cases/ (755 permisions)
+        - /usr/local/bin/focs (executable version of this script. Whatever file you are running this from will be moved here with 755 perms)
+    ''')
+
+    choice = input("If you are ok with this, enter 'Y' or 'y' for 'yes'; otherwise, any other key will quit the program: ")
+
+    if choice != 'Y' and choice != 'y':
+        print("Quitting FOCS. No directories created and no files changed!")
+        exit()
+
+    if os.geteuid() != 0:
+        print("\nYou should be running the install as root or sudo! No other part of FOCS should be run as root!")
+        print("Problem in focs_install()")
+        error()
+
+    dirs = ['/usr/share/focs/','/usr/share/firmware_library/','/usr/share/focs/results/','/usr/share/focs/test_cases','/usr/local/bin/']
+
+    for i in dirs:
+        os.system('mkdir -p ' + i)
+
+    os.system('echo "##This File Holds The SHA256 Hashes Of Previously Fuzzed Binaries!##" > /usr/share/firmware_library/__MANIFEST')
+    os.system('cp ./focs /usr/local/bin/focs')
+    os.system('chmod 777 /usr/share/focs/results')
+    os.system('chmod -R 755 /usr/local/bin/focs && chmod 766 /usr/share/firmware_library/__MANIFEST')
+
+    path = input('Finally, enter the absolute path to where you have AFL++ installed (include the AFL++ directory): ')
+    os.system('echo ' + path + ' > /usr/share/focs/path')
+    os.system('cp $(find ' + path + '/testcases/ -type f) /usr/share/focs/test_cases/')
+    os.system('chmod 777 /usr/share/focs/path')
+
+    # commenting this out for now as it has caused nightmares while in prouction
+    #os.system('rm ./focs')
+
+    exit()
+
+def check_bin_hash(binary):
+    path = '/usr/share/firmware_library/__MANIFEST'
+    sha256 = hashlib.sha256()
+    with open(binary, 'rb') as bin_to_hash:
+        sha256.update(bin_to_hash.read())
+        bin_hash = sha256.hexdigest()
+        ver = bin_hash[:5]
+
+    manifest = open(path, 'r')
+    lines = manifest.readlines()
+
+    for i in lines:
+            if (bin_hash == i.rstrip('\n')):
+#TODO: Add option for busybox binary. Test if user is fuzzing one and add a new option
+                        print('''
+You have fuzzed this before!
+Here are your options:
+NOTE: If you are fuzzing a BusyBox binary, you will have to do this from memory.
+NOTE: All busybox binaries will have the smae hash.
+
+Please select one of the following options:
+1) Fuzz it anyway! (This is not recommended for obvious reasons...)
+2) Quit and choose a different binary! (This is ideal!)
+                        ''')
+                        val = input('Enter your selection (1 or 2): ')
+
+                        while (val != "1" and val != "2"):
+                                print('''
+Please select on of the following options:
+1) Fuzz it anyway! (This is not recommnded for obvious reasons...)
+2) Quit and choose a different binary! (This is ideal!)
+                                ''')
+                                val = input('Please enter either 1 or 2: ')
+
+                        if (val == "2"):
+                                print("You've decided to quit.")
+                                print("This was the responsible choice, but it's dangerous to go alone, so take this:")
+                                print("dnIwbi50ZWNo")
+                                manifest.close()
+                                exit()
+
+                        break;
+    
+    manifest.close()
+    manifest = open(path, 'a')
+    manifest.write('\n' + bin_hash)
+    manifest.close()
+
+    return ver
+
+def prepare_afl(arch):
+    os.environ['QEMU_LD_PREFIX'] = '.'
+    path = subprocess.check_output('cat /usr/share/focs/path', shell=True).strip().decode('ascii')
+    #os.system('cd ' + path + '/qemu_mode/')
+    #os.system('pwd')
+    #os.system('bash ' + path + '/qemu_mode/build_qemu_support.sh ' + arch)
+    #os.system('cd -')
+    qemu_path = path + '/qemu_mode/'
+    subprocess.Popen(['./build_qemu_support.sh', arch],  cwd=qemu_path)
+
+    print('AFL prepared to fuzz ' + arch + '!')
+    return
+
+def focs_bin(): 
+    i = input('Enter the path (relative or absolute) to the binary you want to fuzz:\n')
+    binary = subprocess.check_output('basename ' + i, shell=True).strip().decode('ascii')
+
+    ver = check_bin_hash(i)
+
+    directory = '/usr/share/focs/results/'
+    arch = subprocess.check_output("file ./bin/busybox | cut -d ',' -f 2 | cut -d ' ' -f 2 | tr '[:upper:]' '[:lower:]'", shell=True).strip().decode('ascii')
+
+    prepare_afl(arch)
+
+    addArgs = input("Enter any additional arguments you want to pass in (the first '@@' is NOT already accounted for: use --help option for more info): ")
+
+    # add this in as a variable in case we decide to have the user set memory
+    # we're using 8G because any firmware we fuzz would certainly only need 8G or less
+    mem = '8G'
+
+    bin_dir = str(directory) + str(arch) + '/' + str(binary) + '_' + str(ver) + '/'
+
+    os.system('mkdir -p ' + bin_dir)
+
+    os.system('mkdir -p ' + bin_dir + 'in')
+    dir_in = bin_dir + 'in'
+
+    os.system('mkdir -p ' + bin_dir + 'out')
+    dir_out = bin_dir + 'out'
+    
+    os.system('mkdir -p ' + bin_dir + 'temp')
+    dir_temp = bin_dir + 'temp'
+    
+    # commenting this out for now as it has caused issues for testing
+    # TODO: to fix this, we just need to find a way to make sure this folder exists before targeting it.
+    # should be pretty easy...
+    #os.system('cp -r ' + str(directory) + str(arch) + '*/out/crashes/* ' + str(dir_in))
+    os.system('cp -r /usr/share/focs/test_cases/* ' + str(dir_temp))
+    
+    # afl's corpus minimizer doesn't use the @@ option
+    os.system('afl-cmin -m ' + str(mem) + ' -Q -i ' + str(dir_temp) + ' -o ' + str(dir_in) + ' ' + str(i))
+    os.system('rm -rf ' + str(dir_temp))
+    
+    os.system('afl-fuzz -m ' + str(mem) + ' -Q -i ' + str(dir_in) + ' -o ' + str(dir_out) + ' ' + str(i) + ' ' + str(addArgs))
+
+    exit()
+
+def focs_dir():
+    print("in testing")
+
+    exit()
+
+def main():
+    main_menu()
+    
+    exit()
+
+def DO_NOT_RUN_THIS():
+    x = input("Are you sure? Maybe you found this by accident? This will delete test cases as well!")
+
+    if x != 'y':
+        error()
+
+    os.system("sudo rm -rf /usr/share/focs")
+
+def main_menu():
+    os.system('clear')
+    print('''
+    ███████╗ ██████╗  ██████╗███████╗
+    ██╔════╝██╔═══██╗██╔════╝██╔════╝
+    █████╗  ██║   ██║██║     ███████╗
+    ██╔══╝  ██║   ██║██║     ╚════██║
+    ██║     ╚██████╔╝╚██████╗███████║
+    ╚═╝      ╚═════╝  ╚═════╝╚══════╝
+
+1. Fuzz New Binary Or Directory Of Binaries
+2. View Current Library To Fuzz
+3. Install
+0. View Help
+q. Quit (CTRL+C or CTRL+Z Works Too)
+    ''')
+
+    entry = input('Selection: ')
+    if entry == '1':
+        focs_bin()
+    elif entry == '2':
+        focs_dir()
+    elif entry == '3':
+        focs_install()
+    elif entry == '0':
+        help()
+    elif entry == 'xxx':
+        DO_NOT_RUN_THIS()
+    elif entry == 'q':
+        print("Quit Selected!")
+        print("Exiting...")
+        exit()
+    else:
+        print("\nSelection not recognized...")
+        error()
+
+main()

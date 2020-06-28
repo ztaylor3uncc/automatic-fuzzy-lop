@@ -19,10 +19,15 @@
                                            
                                            
                                            
-```
+FOCS has been re-written in Python3, because it made more sense given how much I was starting to do.
+There is a dotfile directory that has the original bash script that will eventually be moved to its
+own branch, but I havne't done that yet because I am too lazy.
 
-After what feels like 10,000 years of trying to find an easy way to fuzz non-x86 binaries,
-I decided to make one myself!   
+IMPORTANT NOTE: This version of FOCS only has been shown to work on Ubuntu 16.04. This is very
+obnoxious, as it was previously working on Ubuntu 18 and 19 as well as Debian 10 and Slackware.
+
+Something changed not only in the Linux kernel, but with QEMU itself that has caused issues; so
+all features have been rolled back to Ubuntu 16.04 in which this program works as expected.
 
   vr0n
                                            
@@ -34,7 +39,9 @@ This project is super experimental. Use at your own peril.
 ``` 
 - git --recurse-submodules [REPO]
 ```
-- ./focs.sh 
+- ./focs 
+
+- Follow instructions to install
 
 ### Features in Progress
 - [x] Menu mode (utilize cli to run focs)
